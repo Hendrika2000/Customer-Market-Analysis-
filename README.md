@@ -42,8 +42,204 @@ The primary dataset used for this analysis is the "customers.csv" file.
    
 
 ### Data Analysis
-
 Include some interesting code/features worked with
+
+##### Customer Demographics
+```sql
+SELECT 
+	Gender,
+	COUNT(DISTINCT CustomerName) TotalCustomer
+FROM ecommerce_customer_data_custom_ratios 
+GROUP BY Gender;
+```
+```sql
+SELECT 
+	gender, 
+	COUNT(*) as TotalOrdersByGender,
+  SUM(Quantity) TotalQuantityByGender,
+  AVG(TotalPurchaseAmount) TotalPurchaseByGender
+FROM ecommerce_customer_data_custom_ratios 
+GROUP BY gender;
+```
+```sql
+SELECT 
+	CustomerAge,
+	COUNT(DISTINCT CustomerName) TotalCustomer
+FROM ecommerce_customer_data_custom_ratios 
+GROUP BY CustomerAge
+ORDER BY 2 DESC;
+```
+```sql
+WITH total_overall_orders AS (
+    SELECT 
+        COUNT(*) AS overall_total
+    FROM ecommerce_customer_data_custom_ratios
+)
+SELECT
+    CASE
+        WHEN CustomerAge < 25 THEN '< 25'
+        WHEN CustomerAge BETWEEN 25 AND 34 THEN '25-34'
+        WHEN CustomerAge BETWEEN 35 AND 44 THEN '35-44'
+        WHEN CustomerAge BETWEEN 45 AND 54 THEN '45-54'
+        WHEN CustomerAge >= 55 THEN '55+'
+        ELSE 'Unknown'
+    END AS age_group,
+    COUNT(*) AS total_orders,
+    CONCAT(ROUND((COUNT(*) * 100.0 / op.overall_total), 2), '%') AS percentage_contribution
+FROM ecommerce_customer_data_custom_ratios
+CROSS JOIN total_overall_orders op  -- Menggabungkan hasil CTE dengan tabel utama
+GROUP BY age_group, op.overall_total;
+```
+##### Purchase Behavior
+```sql
+SELECT 
+	CustomerName, 
+	COUNT(*) purchase_count, 
+	SUM(TotalPurchaseAmount) total_spent
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY CustomerName
+ORDER BY purchase_count DESC;
+```
+```sql
+SELECT
+	PurchaseDate,
+	ProductCategory,
+	COUNT(*) OVER(PARTITION BY ProductCategory) product_spent,
+  SUM(Quantity) OVER(PARTITION BY ProductCategory) total_quantity
+FROM ecommerce_customer_data_custom_ratios
+WHERE CustomerName ='Michael Smith'
+ORDER BY product_spent DESC;
+```
+```sql
+SELECT
+	ProductCategory,
+  COUNT(*) OVER(PARTITION BY ProductCategory) TotalOrdersByProductCategory,
+	SUM(Quantity) OVER(PARTITION BY ProductCategory) TotalQuantityByProductCategory,
+	SUM(TotalPurchaseAmount) OVER(PARTITION BY ProductCategory) TotalAmountByProductCategory
+FROM ecommerce_customer_data_custom_ratios
+ORDER BY 2 DESC, 3 DESC;
+```
+##### Customer Retention and Churn
+```sql
+SELECT CustomerName,
+ COUNT(*) purchase_count
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY CustomerName
+HAVING COUNT(*) > 1;
+```
+```sql
+WITH rfm AS (
+    SELECT CustomerName,
+    COUNT(CustomerID) as frequency
+    FROM ecommerce_customer_data_custom_ratios
+    GROUP BY CustomerName
+)
+SELECT 
+    CONCAT(ROUND((COUNT(CASE WHEN frequency > 1 THEN 1 END) * 100.0 / COUNT(*)), 2), '%') AS repeat_purchase_percentage
+FROM rfm;
+```
+
+##### Customer Segmentation
+```sql
+SELECT CustomerName,
+       MAX(PurchaseDate) last_purchase,
+       COUNT(PurchaseDate) frequency,
+       SUM(PurchaseDate) monetary
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY CustomerName
+ORDER BY frequency DESC, monetary DESC;
+```
+```sql
+WITH rfm AS 
+(
+SELECT
+	CustomerName,
+	SUM(TotalPurchaseAmount) MonetaryValue,
+	AVG(TotalPurchaseAmount) AvgMonetaryValue,
+	COUNT(CustomerID) Frequency,
+	MAX(PurchaseDate) LastPurchaseDate,
+	( SELECT MAX(PurchaseDate) FROM ecommerce_customer_data_custom_ratios) MaxPurchaseDate,
+	DATEDIFF(( SELECT MAX(PurchaseDate) FROM ecommerce_customer_data_custom_ratios), MAX(PurchaseDate)) Recency
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY CustomerName
+),
+rfm_calc AS
+(
+SELECT r.*,
+NTILE(4) OVER (ORDER BY Recency DESC) fm_recency,
+NTILE(4) OVER (ORDER BY Frequency) rfm_frequency,
+NTILE(4) OVER (ORDER BY AvgMonetaryValue) rfm_monetary
+FROM rfm r
+)
+SELECT c.*
+FROM rfm_calc c;
+```
+###### Segmenting based on RFM values
+```sql
+WITH rfm AS (
+    SELECT CustomerName,
+           MAX(PurchaseDate) as last_purchase,
+           COUNT(CustomerID) as frequency,
+           SUM(TotalPurchaseAmount) as monetary
+    FROM ecommerce_customer_data_custom_ratios
+    GROUP BY CustomerName
+),
+segmented_customers AS (
+    SELECT CustomerName,
+           CASE
+               WHEN DATEDIFF('2023-12-09', last_purchase) <= 30 THEN 'Active'
+               WHEN DATEDIFF('2023-12-09', last_purchase) <= 90 THEN 'Lapsed'
+               ELSE 'Inactive'
+           END as recency_segment,
+           CASE
+               WHEN frequency >= 10 THEN 'Frequent'
+               WHEN frequency >= 5 THEN 'Regular'
+               ELSE 'Infrequent'
+           END as frequency_segment,
+           CASE
+               WHEN monetary >= 2000 THEN 'High Value'
+               WHEN monetary >= 1000 THEN 'Medium Value'
+               ELSE 'Low Value'
+           END as monetary_segment
+    FROM rfm
+)
+SELECT 
+    COUNT(CASE WHEN recency_segment = 'Active' AND frequency_segment = 'Frequent' AND monetary_segment = 'High Value' THEN 1 END) as active_frequent_high_value_customers
+FROM segmented_customers;
+```
+##### Product Preferences
+```sql
+SELECT 
+	productCategory,
+	COUNT(*) OVER(PARTITION BY productCategory) purchase_count
+FROM ecommerce_customer_data_custom_ratios
+ORDER BY purchase_count DESC;
+```
+```sql
+SELECT 
+	CustomerName, 
+	productCategory, 
+	COUNT(*) purchase_count
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY CustomerName,  productCategory
+ORDER BY purchase_count DESC;
+```
+```sql
+WITH cte AS
+(
+SELECT 
+	YEAR(purchasedate) YEAR, 
+	productcategory,
+	SUM(totalpurchaseamount) total_amount
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY productcategory, YEAR(purchasedate)
+)
+(SELECT *, 
+	DENSE_RANK() OVER (PARTITION BY YEAR ORDER BY total_amount DESC) AS Ranking
+FROM cte
+);
+```
+
 
 
 ### Findings and Recommendation
