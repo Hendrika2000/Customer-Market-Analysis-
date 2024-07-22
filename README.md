@@ -16,6 +16,8 @@ The Customer Market Analysis project aims to provide a comprehensive understandi
 - Trend Analysis: Analyze trends in customer purchasing patterns over time.
 - Market Insights: Provide actionable insights to improve marketing strategies and product recommendations.
 
+![Screenshot (156)-](https://github.com/user-attachments/assets/525cbc07-e984-402e-92ea-d71536b3eff6)
+
 ### Data Sources
 - Customer Data: Includes customer demographics (e.g., age, gender) and purchase history.
 - Product Data: Contains details about products purchased, such as product IDs and names.
