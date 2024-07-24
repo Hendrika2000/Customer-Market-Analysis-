@@ -239,8 +239,43 @@ GROUP BY productcategory, YEAR(purchasedate)
 FROM cte
 );
 ```
-
-
+##### Cohort Analysis
+```sql
+WITH cohorts AS (
+    SELECT 
+        CustomerID,
+        DATE_FORMAT(MIN(PurchaseDate), '%Y-%m') AS cohort_month
+    FROM ecommerce_customer_data_custom_ratios
+    GROUP BY CustomerID
+),
+retention AS (
+    SELECT 
+        c.cohort_month,
+        DATE_FORMAT(p.PurchaseDate, '%Y-%m') AS purchase_month,
+        COUNT(DISTINCT p.CustomerID) AS total_customers
+    FROM cohorts c
+    JOIN ecommerce_customer_data_custom_ratios p
+    ON c.CustomerID = p.CustomerID
+    GROUP BY c.cohort_month, purchase_month
+),
+initial_customers AS (
+    SELECT
+        cohort_month,
+        COUNT(DISTINCT CustomerID) AS initial_count
+    FROM cohorts
+    GROUP BY cohort_month
+)
+SELECT 
+    r.cohort_month,
+    r.purchase_month,
+    r.total_customers,
+    ic.initial_count,
+    ROUND((r.total_customers / ic.initial_count) * 100, 2) AS retention_rate
+FROM retention r
+JOIN initial_customers ic
+ON r.cohort_month = ic.cohort_month
+ORDER BY r.cohort_month, r.purchase_month;
+```
 
 ### Findings and Recommendation
 **1. Gender Influence on Total Orders**
