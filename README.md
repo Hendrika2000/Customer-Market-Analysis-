@@ -29,8 +29,6 @@ The primary dataset used for this analysis is the "customers.csv" file.
 - Visualization Tools: Tableau
 
 ### Analysis Techniques
-- Data Cleaning & Preparation:
-  Handle missing values, correct data formats, and ensure data consistency.
 - Segmentation Analysis:
   Group customers based on age ranges and other relevant factors.
 - Frequency Analysis:
@@ -40,11 +38,6 @@ The primary dataset used for this analysis is the "customers.csv" file.
 - Visualization:
 - Create visualizations to present key findings and insights clearly.
    
-
-### Data Analysis
-Include some interesting code/features worked with
-
-
 ### Findings and Recommendation
 **1. Gender Influence on Total Orders**
    - Observation: Gender does not significantly impact the total number of customer orders. Both males and females have similar 
