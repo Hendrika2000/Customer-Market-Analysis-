@@ -11,7 +11,7 @@
 The Customer Market Analysis project aims to provide a comprehensive understanding of customer behavior, preferences, and purchasing patterns. By analyzing customer data, this project seeks to uncover actionable insights that can drive marketing strategies, improve customer engagement, and optimize product offerings.
 
 #### Key Objectives
-- Segmentation: Classify customers into distinct segments based on their age, purchase frequency, and monetary value.
+- Segmentation: Classify customers into distinct segments based on their purchase frequency, and monetary value.
 - Purchase Behavior: Identify the most frequently purchased products within each customer segment.
 - Trend Analysis: Analyze trends in customer purchasing patterns over time.
 - Market Insights: Provide actionable insights to improve marketing strategies and product recommendations.
