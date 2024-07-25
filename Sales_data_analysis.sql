@@ -1,320 +1,274 @@
-
-select * from orders;
-
-#Let's check for duplicates first
-SELECT *
-FROM (
-SELECT *,
-	ROW_NUMBER() OVER(PARTITION BY rowid, orderid, orderdate, customerid,segment, customername ) row_num
-FROM Orders
-)t WHERE row_num>1;
+1. Customer Demographics
 	
--- we don't have row number more than 1, so it means our data is uniqe and doesn't contain duplicates.
--- Next, let's take a look to our orderdate format
-
-SELECT
-	orderdate,
-	shipdate,
-	STR_TO_DATE(Orderdate, '%m/%d/%Y'),
-	STR_TO_DATE(Shipdate, '%m/%d/%Y')
-FROM Orders;
-
--- use str to date to update this field
-UPDATE Orders
-SET Orderdate = STR_TO_DATE(Orderdate, '%m/%d/%Y');
-UPDATE Orders
-SET Shipdate = STR_TO_DATE(Shipdate, '%m/%d/%Y');
-
--- convert the data type properly
-ALTER TABLE Orders
-MODIFY COLUMN Orderdate date;
-ALTER TABLE Orders
-MODIFY COLUMN Shipdate date;
-
--- Total sales and profit for each province
-SELECT
-	province,
-	productcategory,
-        COUNT(*) OVER(PARTITION BY province),
-	SUM(sales) OVER(PARTITION BY province) TotalSalesBYProvince,
-	SUM(profit) OVER(PARTITION BY province) TotalProfitBYProvince
-FROM Orders
-ORDER BY TotalSalesBYProvince, TotalProfitBYProvince DESC;
-
--- Total number of all Orders and for each Product Name
-SELECT
-	Orderdate,
-	productcategory,
-	productname,
-	COUNT(*) OVER() TotalOrders,
-	COUNT(*) OVER(PARTITION BY productname) TotalOrdersByProductName
-FROM Orders
-ORDER BY TotalOrdersByProductName DESC;
-
--- Total number of orders for each customers
-SELECT
-	orderid,
-	orderdate,
-	customername,
-        productcategory,
-	productname,
-	COUNT(*) OVER(PARTITION BY customername) TotalOrderByCustomer,
-	SUM(orderquantity) OVER(PARTITION BY customername) TotalOrderQuantityByCustomer
-FROM Orders
-ORDER BY TotalOrderQuantityByCustomer DESC;
-
--- Total sales and profit by each customersegment
+-- Total customer by gender
 SELECT 
-	customersegment,
-	SUM(sales) OVER(PARTITION BY customersegment) TotalsalesBycustomersegment,
-	SUM(profit) OVER(PARTITION BY customersegment) TotalProfitBycustomersegment
-FROM Orders
-ORDER BY TotalProfitBycustomersegment DESC
-;
+	Gender,
+	COUNT(DISTINCT CustomerName) TotalCustomer
+FROM ecommerce_customer_data_custom_ratios 
+GROUP BY Gender;
 
--- Total Sales by product category and customer segment
+-- Total orders, quantity and avergae purchase amount by gender
 SELECT 
-	productcategory,
-	customersegment,
-	SUM(sales) total_sales
-FROM Orders
-GROUP BY productcategory, customersegment
-ORDER BY productcategory;
+	gender, 
+	COUNT(*) as TotalOrdersByGender,
+	SUM(Quantity) TotalQuantityByGender,
+	AVG(TotalPurchaseAmount) TotalPurchaseByGender
+FROM ecommerce_customer_data_custom_ratios 
+GROUP BY gender;
 
--- Total profit for each month
-SELECT
-	SUBSTRING(Orderdate, 1,7) Month, 
-	SUM(profit) TotalProfit
-FROM Orders
-GROUP BY SUBSTRING(Orderdate, 1,7)
-ORDER BY 1 ASC;
+-- Total customer by age
+SELECT 
+	CustomerAge,
+	COUNT(DISTINCT CustomerName) TotalCustomer
+FROM ecommerce_customer_data_custom_ratios 
+GROUP BY CustomerAge
+ORDER BY 2 DESC;
 
--- Percentage of contribution by each orders to the total sales
+-- Total orders of each age groups and their percentage contribution
+WITH total_overall_orders AS (
+    SELECT 
+        COUNT(*) AS overall_total
+    FROM ecommerce_customer_data_custom_ratios
+)
 SELECT
-	orderid,
-        orderdate,
-	productcategory,
-	productname,
-        SUM(profit) OVER() TotalProfit,
-	SUM(profit) OVER(PARTITION BY productcategory) TotalProfitByProductCategory,
-	ROUND(SUM(profit) OVER(PARTITION BY productcategory) / SUM(profit) OVER() * 100,2) PercentageOfTotal
-FROM Orders
-ORDER BY PercentageOfTotal DESC;
+    CASE
+        WHEN CustomerAge < 25 THEN '< 25'
+        WHEN CustomerAge BETWEEN 25 AND 34 THEN '25-34'
+        WHEN CustomerAge BETWEEN 35 AND 44 THEN '35-44'
+        WHEN CustomerAge BETWEEN 45 AND 54 THEN '45-54'
+        WHEN CustomerAge >= 55 THEN '55+'
+        ELSE 'Unknown'
+    END AS age_group,
+    COUNT(*) AS total_orders,
+    CONCAT(ROUND((COUNT(*) * 100.0 / op.overall_total), 2), '%') AS percentage_contribution
+FROM ecommerce_customer_data_custom_ratios
+CROSS JOIN total_overall_orders op  -- Combining the results of the CTE with the main table
+GROUP BY age_group, op.overall_total;
 
--- Find all orders where sales amount are higher than the average sales across all orders
-SELECT
-*
-FROM (
-SELECT
-	orderid,
-	orderdate,
-        productcategory,
-        sales,
-	ROUND(AVG(sales) OVER(), 2) AvgSales
-FROM Orders
-)t 
-WHERE sales > AvgSales
-ORDER BY sales DESC;
+2. Purchase Behavior
 
--- The deviation of each amount sales from minimum and maximum amount sales
-SELECT
-	productsubcategory,
-	orderdate,
-	MAX(sales) OVER() HighestSales,
-	MIN(sales) OVER() LowestSales,
-	sales - MIN(sales) OVER() DeviationFromMin,
-	MAX(sales) OVER() - sales DeviationFromMax
-FROM Orders;
+-- Total orders and amount of purchase by every customer
+SELECT 
+	CustomerName, 
+	COUNT(*) purchase_count, 
+	SUM(TotalPurchaseAmount) total_spent
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY CustomerName
+ORDER BY purchase_count DESC;
 
--- Top 10 Orders based on their profit 
+-- Total orders by product and their quantity orders for customer 'Michael Smith'
 SELECT
-	*,
-	DENSE_RANK() OVER(ORDER BY profit DESC) ProfitRank_Dense
-FROM Orders
-LIMIT 10;
+	PurchaseDate,
+	ProductCategory,
+	COUNT(*) OVER(PARTITION BY ProductCategory) product_spent,
+  SUM(Quantity) OVER(PARTITION BY ProductCategory) total_quantity
+FROM ecommerce_customer_data_custom_ratios
+WHERE CustomerName ='Michael Smith'
+ORDER BY product_spent DESC;
 
--- 10 Lowest Orders based on their profit 
+-- Find top total orders, quantity and sales by product category
 SELECT
-	*,
-	DENSE_RANK() OVER(ORDER BY profit DESC) ProfitRank_Dense
-FROM Orders
-ORDER BY ProfitRank_Dense DESC
-LIMIT 10;
+	ProductCategory,
+        COUNT(*) OVER(PARTITION BY ProductCategory) TotalOrdersByProductCategory,
+	SUM(Quantity) OVER(PARTITION BY ProductCategory) TotalQuantityByProductCategory,
+	SUM(TotalPurchaseAmount) OVER(PARTITION BY ProductCategory) TotalAmountByProductCategory
+FROM ecommerce_customer_data_custom_ratios
+ORDER BY 2 DESC, 3 DESC;
 
--- Profit Ranking by year and product category
-WITH Profit_Year (productcategory,years, profit) AS
+3. Product Preferences
+
+-- Total orders for each product category from highest to lowest
+SELECT 
+	productCategory,
+	COUNT(*) OVER(PARTITION BY productCategory) purchase_count
+FROM ecommerce_customer_data_custom_ratios
+ORDER BY purchase_count DESC;
+
+SELECT 
+	CustomerName, 
+	productCategory, 
+	COUNT(*) purchase_count
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY CustomerName,  productCategory
+ORDER BY purchase_count DESC;
+
+-- Rank total sales by year and product category
+WITH cte AS
 (
 SELECT 
-	productcategory, 
-	YEAR(orderdate), 
-	SUM(profit)
-FROM Orders
-GROUP BY productcategory, YEAR(orderdate)
-), Profit_Year_Rank AS
-
-(SELECT *, 
-	DENSE_RANK() OVER (PARTITION BY years ORDER BY profit DESC) AS Ranking
-FROM Profit_Year
-)
-SELECT * FROM Profit_Year_Rank;
-
--- Products that fall within the highest 40% of the profit
-SELECT
-*
-FROM (
-SELECT
-	Orderid,
-	orderdate,
+	YEAR(purchasedate) YEAR, 
 	productcategory,
-        productsubcategory,
-        productname,
-	ROUND(CUME_DIST() OVER(PARTITION BY productcategory ORDER BY profit DESC),4) DistRank
-FROM Orders
-)t WHERE DistRank <= 0.4;
+	SUM(totalpurchaseamount) total_amount
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY productcategory, YEAR(purchasedate)
+)
+(SELECT *, 
+	DENSE_RANK() OVER (PARTITION BY YEAR ORDER BY total_amount DESC) AS Ranking
+FROM cte
+);
 
--- Year-over-year profit performance between the current and previous year by finding the percentage change
+4. Sales Trends
+-- Daily Sales Trends
+SELECT 
+SUBSTRING(PurchaseDate, 9,2) DATE, 
+SUM(TotalPurchaseAmount) total_purchase_by_date
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY DATE
+ORDER BY DATE;
+
+-- Monthly Sales Trends
 SELECT
-*,
-CurrentYearProfit - PreviousYearProfit AS YoY_Change,
-ROUND((CurrentYearProfit - PreviousYearProfit)/PreviousYearProfit*100, 2) AS YoY_Percentage
-FROM (
-SELECT
-	YEAR(orderdate) OrderYear,
-	SUM(profit) CurrentYearProfit,
-    LAG(SUM(profit)) OVER (ORDER BY YEAR(orderdate)) PreviousYearProfit
-FROM Orders
-GROUP BY
-	YEAR(orderdate)
-    )t;
+	SUBSTRING(PurchaseDate, 1,7) MONTH,
+    COUNT(*) total_orders,
+    SUM(Quantity) total_quantity,
+    SUM(TotalPurchaseAmount) total_sales
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY MONTH
+ORDER BY MONTH;
 
 
--- Month-over-month sales and profit performance between the current and previous year by finding the percentage change
+-- Month-over-month sales performance between the current and previous year by finding the percentage change
 SELECT
 *,
 CurrentMonthSales - PreviousMonthSales AS MoM_Sales_Change,
 ROUND((CurrentMonthSales - PreviousMonthSales)/PreviousMonthSales*100, 2) AS MoM_Sales_Percentage,
-CurrentMonthProfit - PreviousMonthProfit AS MoM_Profit_Change,
-ROUND((CurrentMonthProfit - PreviousMonthProfit)/PreviousMonthProfit*100, 2) AS MoM_Profit_Percentage
 FROM (
 SELECT
-	SUBSTRING(Orderdate, 1,7) Month,
-    SUM(sales) CurrentMonthSales,
-    SUM(profit) CurrentMonthProfit,
-    LAG(SUM(sales)) OVER (ORDER BY SUBSTRING(Orderdate, 1,7)) PreviousMonthSales,
-    LAG(SUM(profit)) OVER (ORDER BY SUBSTRING(Orderdate, 1,7)) PreviousMonthProfit
-FROM Orders
-GROUP BY SUBSTRING(Orderdate, 1,7)
+    SUBSTRING(PurchaseDate, 1,7) MONTH,
+    SUM(TotalPurchaseAmount) CurrentMonthSales,
+    LAG(SUM(TotalPurchaseAmount)) OVER (ORDER BY SUBSTRING(PurchaseDate, 1,7)) PreviousMonthSales
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY SUBSTRING(PurchaseDate, 1,7)
 )t;
 
 
-## Customer Retention
--- Customers return within the first 30 days
-CREATE TEMPORARY TABLE customer_orders AS
-SELECT
-    customername,
-    orderdate,
-    DATE_FORMAT(orderdate, '%Y-%m') AS month,
-    DATE_FORMAT(MIN(orderdate) OVER (PARTITION BY customername), '%Y-%m') AS cohort,
-    DATEDIFF(orderdate, MIN(orderdate) OVER (PARTITION BY customername)) AS days_since_first_order
-FROM orders;
+4. Customer Retention and Churn
+
+-- Customers who make more than one purchase
+SELECT CustomerName,
+ COUNT(*) purchase_count
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY CustomerName
+HAVING COUNT(*) > 1;
+
+-- Percentage of customers who make more than one purchase
+WITH rfm AS (
+    SELECT CustomerName,
+    COUNT(CustomerID) as frequency
+    FROM ecommerce_customer_data_custom_ratios
+    GROUP BY CustomerName
+)
+SELECT 
+    CONCAT(ROUND((COUNT(CASE WHEN frequency > 1 THEN 1 END) * 100.0 / COUNT(*)), 2), '%') AS repeat_purchase_percentage
+FROM rfm;
 
 
-SELECT
-    cohort,
-    COUNT(DISTINCT customername) AS num_returning_customers
-FROM customer_orders
-WHERE days_since_first_order > 0 AND days_since_first_order <= 30
-GROUP BY cohort
-ORDER BY cohort;
+5. Customer Segmentation
+	
+-- Find the last purchase, total of orders total purchase amount by customer
+SELECT CustomerName,
+       MAX(PurchaseDate) last_purchase,
+       COUNT(PurchaseDate) frequency,
+       SUM(PurchaseDate) monetary
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY CustomerName
+ORDER BY frequency DESC, monetary DESC;
 
--- Calculating retention for customers who received a discount
+-- Use the NTILE function to categorize customers based on recency, total number of orders (frequency)
+   and purchase amount by customer (monetary)
+	   
+WITH rfm AS 
+(
 SELECT
-    cohort,
-    month,
-    COUNT(DISTINCT customername) AS num_customers_with_discount
-FROM (
+	CustomerName,
+	SUM(TotalPurchaseAmount) MonetaryValue,
+	AVG(TotalPurchaseAmount) AvgMonetaryValue,
+	COUNT(CustomerID) Frequency,
+	MAX(PurchaseDate) LastPurchaseDate,
+	( SELECT MAX(PurchaseDate) FROM ecommerce_customer_data_custom_ratios) MaxPurchaseDate,
+	DATEDIFF(( SELECT MAX(PurchaseDate) FROM ecommerce_customer_data_custom_ratios), MAX(PurchaseDate)) Recency
+FROM ecommerce_customer_data_custom_ratios
+GROUP BY CustomerName
+),
+rfm_calc AS
+(
+SELECT r.*,
+NTILE(4) OVER (ORDER BY Recency DESC) fm_recency,
+NTILE(4) OVER (ORDER BY Frequency) rfm_frequency,
+NTILE(4) OVER (ORDER BY AvgMonetaryValue) rfm_monetary
+FROM rfm r
+)
+SELECT c.*
+FROM rfm_calc c;
+
+
+---- Segmenting based on RFM values
+
+WITH rfm AS (
+    SELECT CustomerName,
+           MAX(PurchaseDate) as last_purchase,
+           COUNT(CustomerID) as frequency,
+           SUM(TotalPurchaseAmount) as monetary
+    FROM ecommerce_customer_data_custom_ratios
+    GROUP BY CustomerName
+),
+segmented_customers AS (
+    SELECT CustomerName,
+           CASE
+               WHEN DATEDIFF('2023-12-09', last_purchase) <= 30 THEN 'Active'
+               WHEN DATEDIFF('2023-12-09', last_purchase) <= 90 THEN 'Lapsed'
+               ELSE 'Inactive'
+           END as recency_segment,
+           CASE
+               WHEN frequency >= 10 THEN 'Frequent'
+               WHEN frequency >= 5 THEN 'Regular'
+               ELSE 'Infrequent'
+           END as frequency_segment,
+           CASE
+               WHEN monetary >= 2000 THEN 'High Value'
+               WHEN monetary >= 1000 THEN 'Medium Value'
+               ELSE 'Low Value'
+           END as monetary_segment
+    FROM rfm
+)
+SELECT 
+    COUNT(CASE WHEN recency_segment = 'Active' AND frequency_segment = 'Frequent' AND monetary_segment = 'High Value' THEN 1 END) as active_frequent_high_value_customers
+FROM segmented_customers;
+
+
+6. Cohort Analysis
+
+WITH cohorts AS (
+    SELECT 
+        CustomerID,
+        DATE_FORMAT(MIN(PurchaseDate), '%Y-%m') AS cohort_month
+    FROM ecommerce_customer_data_custom_ratios
+    GROUP BY CustomerID
+),
+retention AS (
+    SELECT 
+        c.cohort_month,
+        DATE_FORMAT(p.PurchaseDate, '%Y-%m') AS purchase_month,
+        COUNT(DISTINCT p.CustomerID) AS total_customers
+    FROM cohorts c
+    JOIN ecommerce_customer_data_custom_ratios p
+    ON c.CustomerID = p.CustomerID
+    GROUP BY c.cohort_month, purchase_month
+),
+initial_customers AS (
     SELECT
-        customername,
-        DATE_FORMAT(MIN(orderdate), '%Y-%m') AS cohort,
-        DATE_FORMAT(orderdate, '%Y-%m') AS month,
-        discount
-    FROM orders
-    GROUP BY customername, DATE_FORMAT(orderdate, '%Y-%m'), discount
-) t
-WHERE discount != 0
-GROUP BY cohort, month
-ORDER BY cohort, month;
-
--- Calculating retention for customers who doesn't received a discount
-SELECT
-    cohort,
-    month,
-    COUNT(DISTINCT customername) AS num_customers_without_discount
-FROM (
-    SELECT
-        customername,
-        DATE_FORMAT(MIN(orderdate), '%Y-%m') AS cohort,
-        DATE_FORMAT(orderdate, '%Y-%m') AS month,
-        discount
-    FROM orders
-    GROUP BY customername, DATE_FORMAT(orderdate, '%Y-%m'), discount
-) t
-WHERE discount = 0
-GROUP BY cohort, month
-ORDER BY cohort, month;
-
-
-## Percentage Decline in Customer Retention
-WITH
-    discount_retention AS (
-        SELECT
-            cohort,
-            month,
-            COUNT(DISTINCT customername) AS num_customers_with_discount
-        FROM (
-            SELECT
-                customername,
-                DATE_FORMAT(MIN(orderdate), '%Y-%m') AS cohort,
-                DATE_FORMAT(orderdate, '%Y-%m') AS month,
-                discount
-            FROM orders
-            GROUP BY customername, DATE_FORMAT(orderdate, '%Y-%m'), discount
-        ) t
-        WHERE discount != 0
-        GROUP BY cohort, month
-    ),
-    no_discount_retention AS (
-        SELECT
-            cohort,
-            month,
-            COUNT(DISTINCT customername) AS num_customers_without_discount
-        FROM (
-            SELECT
-                customername,
-                DATE_FORMAT(MIN(orderdate), '%Y-%m') AS cohort,
-                DATE_FORMAT(orderdate, '%Y-%m') AS month,
-                discount
-            FROM orders
-            GROUP BY customername, DATE_FORMAT(orderdate, '%Y-%m'), discount
-        ) t
-        WHERE discount = 0
-        GROUP BY cohort, month
-    )
-SELECT
-    d.cohort,
-    d.month,
-    d.num_customers_with_discount,
-    n.num_customers_without_discount,
-    IFNULL(n.num_customers_without_discount, 0) AS no_discount_count,
-    IFNULL(d.num_customers_with_discount, 0) AS discount_count,
-    CASE 
-        WHEN d.num_customers_with_discount > 0 THEN
-            ((d.num_customers_with_discount - IFNULL(n.num_customers_without_discount, 0)) / d.num_customers_with_discount) * 100
-        ELSE
-            NULL
-    END AS percentage_decrease
-FROM discount_retention d
-LEFT JOIN no_discount_retention n
-    ON d.cohort = n.cohort AND d.month = n.month
-ORDER BY d.cohort, d.month;
-
+        cohort_month,
+        COUNT(DISTINCT CustomerID) AS initial_count
+    FROM cohorts
+    GROUP BY cohort_month
+)
+SELECT 
+    r.cohort_month,
+    r.purchase_month,
+    r.total_customers,
+    ic.initial_count,
+    ROUND((r.total_customers / ic.initial_count) * 100, 2) AS retention_rate
+FROM retention r
+JOIN initial_customers ic
+ON r.cohort_month = ic.cohort_month
+ORDER BY r.cohort_month, r.purchase_month;
