@@ -37,6 +37,7 @@ The primary dataset used for this analysis is the "customers.csv" file.
   Examine purchasing trends over time and across different customer segments.
 - Visualization:
 - Create visualizations to present key findings and insights clearly.
+
    
 ### Findings and Recommendation
 **1. Gender Influence on Total Orders**
