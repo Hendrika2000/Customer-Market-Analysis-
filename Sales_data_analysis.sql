@@ -35,7 +35,7 @@ MODIFY COLUMN Shipdate date;
 SELECT
 	province,
 	productcategory,
-    COUNT(*) OVER(PARTITION BY province),
+        COUNT(*) OVER(PARTITION BY province),
 	SUM(sales) OVER(PARTITION BY province) TotalSalesBYProvince,
 	SUM(profit) OVER(PARTITION BY province) TotalProfitBYProvince
 FROM Orders
@@ -71,6 +71,15 @@ SELECT
 FROM Orders
 ORDER BY TotalProfitBycustomersegment DESC
 ;
+
+-- Total Sales by product category and customer segment
+SELECT 
+	productcategory,
+	customersegment,
+	SUM(sales) total_sales
+FROM Orders
+GROUP BY productcategory, customersegment
+ORDER BY productcategory;
 
 -- Total profit for each month
 SELECT
