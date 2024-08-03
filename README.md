@@ -47,17 +47,20 @@ The primary dataset used for this analysis is the "customers.csv" file.
 ## Recommendation
 
 **- Marketing Strategy for Repeat Customers**
-  Utilize the fact that 97.12% of customers make repeat purchases by creating appealing loyalty programs, such as     
-  special discounts or exclusive offers for future purchases.
-  Develop marketing campaigns targeting the 55+ age group, as they represent the largest customer segment (30.20%). 
-  Use marketing channels most popular with this age group, such as email or social media platforms they frequently 
-  use.
+  
+  Utilize the fact that 97.12% of customers make repeat purchases by creating appealing loyalty programs, 
+  such as special discounts or exclusive offers for future purchases.Develop marketing campaigns targeting the 55+ 
+  age group, as they represent the largest customer segment (30.20%). Use marketing channels most popular with this 
+  age group, such as email or social media platforms they frequently use.
+  
 **- Optimize Sales for Most Frequently Ordered Products**
+  
   Focus on promoting and offering special deals for clothing, as it is the most frequently ordered product.
   Review annual sales strategies considering that books and clothing alternate as top-selling products. Aggressively
   promote these items during peak sales seasons.
   
 **- Customer Segmentation Based on Value**
+  
   For top customers (active-frequent-high value), offer exclusive programs such as premium memberships, early access    to new products, or special events. These customers purchase an average of 19 times, spend around $51,987, and made 
   their last purchase within the past 8 days.
   Provide incentives to increase purchase frequency for active-regular-high value customers who buy an average of 7 
