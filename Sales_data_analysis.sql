@@ -205,35 +205,148 @@ FROM rfm_calc c;
 ---- Segmenting based on RFM values
 
 WITH rfm AS (
-    SELECT CustomerName,
-           MAX(PurchaseDate) as last_purchase,
-           COUNT(CustomerID) as frequency,
-           SUM(TotalPurchaseAmount) as monetary
-    FROM ecommerce_customer_data_custom_ratios
-    GROUP BY CustomerName
+    SELECT 
+        CustomerName,
+        MAX(PurchaseDate) AS last_purchase,
+        COUNT(CustomerID) AS frequency,
+        SUM(TotalPurchaseAmount) AS monetary
+    FROM 
+        ecommerce_customer_data_custom_ratios
+    GROUP BY 
+        CustomerName
+), segmented_customers AS (
+    SELECT 
+        CustomerName,
+        CASE
+            WHEN DATEDIFF('2023-12-09', last_purchase) <= 30 THEN 'Active'
+            WHEN DATEDIFF('2023-12-09', last_purchase) <= 90 THEN 'Lapsed'
+            ELSE 'Inactive'
+        END AS recency_segment,
+        CASE
+            WHEN frequency >= 10 THEN 'Frequent'
+            WHEN frequency >= 5 THEN 'Regular'
+            ELSE 'Infrequent'
+        END AS frequency_segment,
+        CASE
+            WHEN monetary >= 2000 THEN 'High Value'
+            WHEN monetary >= 1000 THEN 'Medium Value'
+            ELSE 'Low Value'
+        END AS monetary_segment
+    FROM 
+        rfm
 ),
-segmented_customers AS (
-    SELECT CustomerName,
-           CASE
-               WHEN DATEDIFF('2023-12-09', last_purchase) <= 30 THEN 'Active'
-               WHEN DATEDIFF('2023-12-09', last_purchase) <= 90 THEN 'Lapsed'
-               ELSE 'Inactive'
-           END as recency_segment,
-           CASE
-               WHEN frequency >= 10 THEN 'Frequent'
-               WHEN frequency >= 5 THEN 'Regular'
-               ELSE 'Infrequent'
-           END as frequency_segment,
-           CASE
-               WHEN monetary >= 2000 THEN 'High Value'
-               WHEN monetary >= 1000 THEN 'Medium Value'
-               ELSE 'Low Value'
-           END as monetary_segment
-    FROM rfm
+customer_segments AS (
+    SELECT 
+        CustomerName,
+        recency_segment,
+        frequency_segment,
+        monetary_segment,
+        CONCAT_WS('_', recency_segment, frequency_segment, monetary_segment) AS combined_segment
+    FROM 
+        segmented_customers
+),segment_counts AS (
+    SELECT 
+        combined_segment AS Customer_Segment,
+        COUNT(CustomerName) AS Number_of_Customers
+    FROM 
+        customer_segments
+    GROUP BY 
+        combined_segment
+),total_customers AS (
+    SELECT 
+        SUM(Number_of_Customers) AS total
+    FROM 
+        segment_counts
 )
 SELECT 
-    COUNT(CASE WHEN recency_segment = 'Active' AND frequency_segment = 'Frequent' AND monetary_segment = 'High Value' THEN 1 END) as active_frequent_high_value_customers
-FROM segmented_customers;
+    sc.Customer_Segment,
+    sc.Number_of_Customers,
+    ROUND((sc.Number_of_Customers / tc.total) * 100, 2) AS Percentage_of_Total_Customers
+FROM 
+    segment_counts sc, total_customers tc
+ORDER BY 
+   Number_of_Customers DESC;
+
+-- Customer avearge recency, frequency and monetary for each segment
+
+WITH rfm AS (
+    SELECT 
+        CustomerName,
+        MAX(PurchaseDate) AS last_purchase,
+        COUNT(CustomerID) AS frequency,
+        SUM(TotalPurchaseAmount) AS monetary
+    FROM 
+        ecommerce_customer_data_custom_ratios
+    GROUP BY 
+        CustomerName
+),
+segmented_customers AS (
+    SELECT 
+        CustomerName,
+        DATEDIFF('2023-12-09', last_purchase) AS recency,
+        frequency,
+        monetary,
+        CASE
+            WHEN DATEDIFF('2023-12-09', last_purchase) <= 30 THEN 'Active'
+            WHEN DATEDIFF('2023-12-09', last_purchase) <= 90 THEN 'Lapsed'
+            ELSE 'Inactive'
+        END AS recency_segment,
+        CASE
+            WHEN frequency >= 10 THEN 'Frequent'
+            WHEN frequency >= 5 THEN 'Regular'
+            ELSE 'Infrequent'
+        END AS frequency_segment,
+        CASE
+            WHEN monetary >= 2000 THEN 'High Value'
+            WHEN monetary >= 1000 THEN 'Medium Value'
+            ELSE 'Low Value'
+        END AS monetary_segment
+    FROM 
+        rfm
+),
+customer_segments AS (
+    SELECT 
+        CustomerName,
+        recency,
+        frequency,
+        monetary,
+        CONCAT_WS('_', recency_segment, frequency_segment, monetary_segment) AS combined_segment
+    FROM 
+        segmented_customers
+),
+segment_counts AS (
+    SELECT 
+        combined_segment AS "Customer_Segment",
+        COUNT(CustomerName) AS "Number_of_Customers"
+    FROM 
+        customer_segments
+    GROUP BY 
+        combined_segment
+),
+total_customers AS (
+    SELECT 
+        SUM("Number_of_Customers") AS total
+    FROM 
+        segment_counts
+)
+
+SELECT 
+    sc.Customer_Segment,
+    sc.Number_of_Customers,
+    ROUND((sc.Number_of_Customers / tc.total) * 100, 2) AS "Percentage of Total Customers",
+    ROUND(AVG(cs.recency), 2) AS "Average Recency",
+    ROUND(AVG(cs.frequency), 2) AS "Average Frequency",
+    ROUND(AVG(cs.monetary), 2) AS "Average Monetary"
+FROM 
+    segment_counts sc
+JOIN 
+    total_customers tc ON 1=1
+JOIN 
+    customer_segments cs ON sc.Customer_Segment = cs.combined_segment
+GROUP BY 
+    sc.Customer_Segment, sc.Number_of_Customers, tc.total
+ORDER BY 
+    sc.Number_of_Customers DESC;
 
 
 6. Cohort Analysis
