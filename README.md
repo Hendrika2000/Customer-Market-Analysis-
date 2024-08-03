@@ -39,38 +39,34 @@ The primary dataset used for this analysis is the "customers.csv" file.
 - Create visualizations to present key findings and insights clearly.
 
    
-### Findings and Recommendation
-**1. Gender Influence on Total Orders**
-   - Observation: Gender does not significantly impact the total number of customer orders. Both males and females have similar 
-      purchase ratios.
-   - Insight: Marketing strategies and promotions should not be gender-specific if targeting purchase frequency. Focus may be 
-     better placed on other factors.
-     
-**2. Age Group Distribution**
-   - Observation: Customers aged 55 and above represent the largest segment, accounting for 30.20% of total customers.
-   - Insight: This age group is a significant market segment. Targeted marketing efforts and product offerings should consider 
-     the preferences and needs of older customers.
+### Findings 
+1. 97.12% of customers make repeat purchases (more than once).Customers aged 55 and above represent the largest segment, accounting for 30.20% of total customers
+2. Clothing is the most frequently ordered product. Based on annual sales, Books and Clothing alternately occupy the top positions, while Home and Electronics consistently rank at the bottom.
+3. 1.44% our top customer (active-frequent-high value) have purchased average 19 times in the evaluation period, spending an average of $51.987 and have purchased within the last 8 days on average. 2.73% (active-regular-high value) have purchased average 7 times in the evaluation period, speding an average of $18.468 and have purchased within the last 8 days on average and 42.9% (Inactive-regular-high value) spending an average of $17.423 and have only purchased 6 times in a 289 days.
 
-**3. Product Ordering Trends**
-   - Observation: Clothing is the most frequently ordered product. Based on annual sales, Books and Clothing alternately occupy 
-     the top positions, while Home and Electronics consistently rank at the bottom.
-   - Insight: Clothing should be a focus for promotions and stock management. Diversifying strategies to boost the sales of 
-     Home and Electronics might be beneficial.
+## Recommendation
 
-**4. Repeat Purchase Rate**
-   - Observation: 97.12% of customers make repeat purchases (more than once).
-   - Insight: High customer retention indicates strong loyalty and satisfaction. Retention strategies and loyalty programs 
-     should be maintained and potentially enhanced.
-     
-**5. High-Frequency Customers**
-   - Observation: There are 46 customers who have made more than 50 transactions.
-   - Insight: These high-frequency customers are likely valuable and can be key targets for personalized offers and engagement 
-     strategies.
-
-**6. Active, Frequent, High-Value Customers**
-   - Observation: Out of a total of 39,920 customers, 573 are categorized as active, frequent, and high-value.
-   - Insight: This subset represents a significant portion of total revenue. Focusing on these customers with targeted 
-     marketing, exclusive offers, and premium services can drive further growth.
+**- Marketing Strategy for Repeat Customers**
+  Utilize the fact that 97.12% of customers make repeat purchases by creating appealing loyalty programs, such as     
+  special discounts or exclusive offers for future purchases.
+  Develop marketing campaigns targeting the 55+ age group, as they represent the largest customer segment (30.20%). 
+  Use marketing channels most popular with this age group, such as email or social media platforms they frequently 
+  use.
+**- Optimize Sales for Most Frequently Ordered Products**
+  Focus on promoting and offering special deals for clothing, as it is the most frequently ordered product.
+  Review annual sales strategies considering that books and clothing alternate as top-selling products. Aggressively
+  promote these items during peak sales seasons.
+  
+**- Customer Segmentation Based on Value**
+  For top customers (active-frequent-high value), offer exclusive programs such as premium memberships, early access    to new products, or special events. These customers purchase an average of 19 times, spend around $51,987, and made 
+  their last purchase within the past 8 days.
+  Provide incentives to increase purchase frequency for active-regular-high value customers who buy an average of 7 
+  times and spend about $18,468. Consider bundling offers or additional discounts for large purchases.
+  For inactive-regular-high value customers who have purchased 6 times in 289 days, spending an average of $17,423, 
+  consider retargeting campaigns to reactivate them. Offer exclusive discounts or special deals to encourage them to 
+  return.
 
 
 
+
+  
